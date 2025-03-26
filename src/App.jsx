@@ -3,14 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 function App() {
   const [audioContext, setAudioContext] = useState(null);
   const [analyser, setAnalyser] = useState(null);
-  const [dataArray, setDataArray] = useState(new Uint8Array(0));
   const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!audioContext) {
       const context = new (window.AudioContext || window.webkitAudioContext)();
       const analyserNode = context.createAnalyser();
-      analyserNode.fftSize = 4096; // Aumentamos fftSize para mejorar la respuesta
+      analyserNode.fftSize = 4096;
       setAudioContext(context);
       setAnalyser(analyserNode);
     }
@@ -18,28 +17,34 @@ function App() {
 
   const startRecording = async () => {
     if (!audioContext) return;
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
     console.log("Microphone access granted");
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-    analyser.connect(audioContext.destination); // Opcional, permite escuchar el audio
 
-    const bufferLength = analyser.frequencyBinCount;
-    const newDataArray = new Uint8Array(bufferLength);
-    setDataArray(newDataArray);
-    drawWaveform(newDataArray);
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(track => console.log(track.label, track.readyState));
+    
+    const source = audioContext.createMediaStreamSource(stream);
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 2; // Amplify input signal
+    
+    source.connect(gainNode);
+    gainNode.connect(analyser);
+
+    drawWaveform();
   };
 
-  const drawWaveform = (data) => {
+  const drawWaveform = () => {
     if (!analyser || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
     const draw = () => {
-      console.log("Drawing waveform..."); // Verificamos que la función se ejecuta
       requestAnimationFrame(draw);
-      analyser.getByteTimeDomainData(data);
-      console.log(data); // Verificamos que los datos cambian
+      analyser.getByteTimeDomainData(dataArray);
       
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -47,21 +52,19 @@ function App() {
       ctx.strokeStyle = 'lime';
       ctx.beginPath();
       
-      const sliceWidth = (canvas.width * 1.0) / data.length;
+      const sliceWidth = canvas.width / bufferLength;
       let x = 0;
-      
-      for (let i = 0; i < data.length; i++) {
-        const v = data[i] / 128.0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
         const y = (v * canvas.height) / 2;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+
         x += sliceWidth;
       }
-      
+
       ctx.lineTo(canvas.width, canvas.height / 2);
       ctx.stroke();
     };
@@ -69,10 +72,12 @@ function App() {
   };
 
   return (
-    <div>
+    <div style={{ textAlign: 'center', background: '#222', color: 'white', minHeight: '100vh', padding: '20px' }}>
       <h1>Analizador de Frecuencias para Guitarra</h1>
-      <button onClick={startRecording}>Iniciar Captura de Sonido</button>
-      <canvas ref={canvasRef} width={600} height={300} style={{ border: '1px solid white' }}></canvas>
+      <button onClick={startRecording} style={{ padding: '10px', fontSize: '16px', marginBottom: '20px' }}>
+        Iniciar Captura de Sonido
+      </button>
+      <canvas ref={canvasRef} width={600} height={300} style={{ border: '1px solid white', background: 'black' }}></canvas>
     </div>
   );
 }
