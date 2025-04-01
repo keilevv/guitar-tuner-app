@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import DrawWave from "./Components/DrawWave";
 import FrequencySpectrum from "./Components/FrequencySpectrum";
 import RecordButton from "./Components/RecordButton";
+import Footer from "./Components/Footer";
 
 function App() {
   const [audioContext, setAudioContext] = useState(null);
@@ -19,16 +20,17 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen w-screen flex flex-col items-center gap-8 p-8">
-      <h1 className="text-3xl font-semibold">Analizador de Frecuencias</h1>
+    <div className="min-h-screen w-screen flex flex-col items-center gap-8 p-8 overflow-x-auto">
+      <h1 className="text-3xl font-semibold text-center">Analizador de Frecuencias</h1>
       <DrawWave analyser={analyser} isRecording={isRecording} />
-      <FrequencySpectrum analyser={analyser} isRecording={isRecording} />
       <RecordButton
         isRecording={isRecording}
         setIsRecording={setIsRecording}
         audioContext={audioContext}
         analyser={analyser}
       />
+      <FrequencySpectrum analyser={analyser} isRecording={isRecording} />
+      <Footer />
     </div>
   );
 }

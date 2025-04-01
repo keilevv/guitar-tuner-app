@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import useFFTAnalyzer from "../../hooks/useFFTAnalyzer";
+import useViewport from "../../hooks/useViewport";
 
 function FrequencySpectrum({ analyser, isRecording }) {
   const canvasRef = useRef(null);
   const { frequencyData } = useFFTAnalyzer(analyser, isRecording);
+  const { isMobileScreen } = useViewport();
   const sampleRate = 44100; // Assuming a 44.1kHz sample rate
   const maxFrequency = 2000; // Max frequency to display
 
@@ -35,10 +37,10 @@ function FrequencySpectrum({ analyser, isRecording }) {
 
       // Draw frequency labels
       ctx.fillStyle = "white";
-      ctx.font = "12px Arial";
+      ctx.font = "12px Consolas";
       ctx.textAlign = "center";
 
-      const labelFrequencies = [100, 500, 1000, 1500,2000]; // Adjusted labels for the range
+      const labelFrequencies = [100, 500, 1000, 1500, 2000]; // Adjusted labels for the range
       labelFrequencies.forEach((freq) => {
         const index = Math.round((freq / nyquist) * bufferLength);
         const labelX = (index / maxIndex) * canvas.width;
@@ -59,12 +61,12 @@ function FrequencySpectrum({ analyser, isRecording }) {
 
   return (
     <div>
-      <h2>Espectro de Frecuencias</h2>
+      <h2 className="font-semibold">Espectro de Frecuencias</h2>
       <canvas
         ref={canvasRef}
-        width={800}
-        height={300}
-        style={{ border: "1px solid white", background: "black" }}
+        className="border-2 border-gray-400 bg-black"
+        width={isMobileScreen ? 350 : 800}
+        height={isMobileScreen ? 200 : 300}
       ></canvas>
     </div>
   );

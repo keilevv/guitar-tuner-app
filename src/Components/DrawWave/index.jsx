@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import useFFTAnalyzer from "../../hooks/useFFTAnalyzer";
+import useViewport from "../../hooks/useViewport";
 
 function DrawWave({ analyser, isRecording }) {
   const canvasRef = useRef(null);
+  const { isMobileScreen } = useViewport();
   const { frequency } = useFFTAnalyzer(analyser, isRecording);
 
   useEffect(() => {
@@ -13,7 +15,7 @@ function DrawWave({ analyser, isRecording }) {
     const dataArray = new Uint8Array(bufferLength);
     let animationFrameId;
     let timeElapsed = 0; // Reset when component mounts
-    const sampleRate = 44100; 
+    const sampleRate = 44100;
 
     const draw = () => {
       if (!isRecording) {
@@ -46,7 +48,7 @@ function DrawWave({ analyser, isRecording }) {
 
       // Draw moving time labels
       ctx.fillStyle = "white";
-      ctx.font = "14px Arial";
+      ctx.font = "14px Consolas";
       ctx.textAlign = "center";
 
       const timeStep = bufferLength / sampleRate; // Time per sample
@@ -72,12 +74,15 @@ function DrawWave({ analyser, isRecording }) {
 
   return (
     <div>
-      <h2>Frecuencia {frequency ? frequency + " Hz" : "Calculando..."}</h2>
+      <div className="flex gap-1">
+        <h2 className="font-semibold">Frecuencia:</h2>
+        <h2 className="font-semibold text-lime-400">{frequency ? frequency + " Hz" : " Calculando..."}</h2>
+      </div>
       <canvas
         ref={canvasRef}
-        width={800}
-        height={300}
-        style={{ border: "1px solid white", background: "black" }}
+        className="border-2 border-gray-400 bg-black"
+        width={isMobileScreen ? 350 : 800}
+        height={isMobileScreen ? 200 : 300}
       ></canvas>
     </div>
   );
