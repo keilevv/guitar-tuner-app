@@ -1,0 +1,73 @@
+import { useEffect, useRef } from "react";
+import useFFTAnalyzer from "../../hooks/useFFTAnalyzer";
+
+function FrequencySpectrum({ analyser, isRecording }) {
+  const canvasRef = useRef(null);
+  const { frequencyData } = useFFTAnalyzer(analyser, isRecording);
+  const sampleRate = 44100; // Assuming a 44.1kHz sample rate
+  const maxFrequency = 2000; // Max frequency to display
+
+  useEffect(() => {
+    if (!canvasRef.current || !frequencyData.length) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const bufferLength = frequencyData.length;
+    const nyquist = sampleRate / 2; // 22050 Hz in 44.1kHz sample rate
+    const maxIndex = Math.round((maxFrequency / nyquist) * bufferLength); // Convert 2000Hz to index
+
+    const draw = () => {
+      if (!isRecording) return;
+      requestAnimationFrame(draw);
+
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = canvas.width / maxIndex;
+      let x = 0;
+
+      // Draw frequency bars (only up to maxIndex)
+      for (let i = 0; i < maxIndex; i++) {
+        const barHeight = frequencyData[i] / 2;
+        ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth;
+      }
+
+      // Draw frequency labels
+      ctx.fillStyle = "white";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "center";
+
+      const labelFrequencies = [100, 500, 1000, 1500,2000]; // Adjusted labels for the range
+      labelFrequencies.forEach((freq) => {
+        const index = Math.round((freq / nyquist) * bufferLength);
+        const labelX = (index / maxIndex) * canvas.width;
+
+        ctx.fillText(`${freq} Hz`, labelX, canvas.height - 5);
+        ctx.beginPath();
+        ctx.moveTo(labelX, canvas.height - 20);
+        ctx.lineTo(labelX, canvas.height - 10);
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+      });
+    };
+
+    if (isRecording) {
+      draw();
+    }
+  }, [frequencyData, isRecording]);
+
+  return (
+    <div>
+      <h2>Espectro de Frecuencias</h2>
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={300}
+        style={{ border: "1px solid white", background: "black" }}
+      ></canvas>
+    </div>
+  );
+}
+
+export default FrequencySpectrum;

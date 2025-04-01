@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import DrawWave from "./Components/DrawWave";
+import FrequencySpectrum from "./Components/FrequencySpectrum";
 import RecordButton from "./Components/RecordButton";
 
 function App() {
@@ -11,7 +12,7 @@ function App() {
     if (!audioContext) {
       const context = new (window.AudioContext || window.webkitAudioContext)();
       const analyserNode = context.createAnalyser();
-      analyserNode.fftSize = 4096;
+      analyserNode.fftSize = 1024;
       setAudioContext(context);
       setAnalyser(analyserNode);
     }
@@ -21,6 +22,7 @@ function App() {
     <div className="min-h-screen w-screen flex flex-col items-center gap-8 p-8">
       <h1 className="text-3xl font-semibold">Analizador de Frecuencias</h1>
       <DrawWave analyser={analyser} isRecording={isRecording} />
+      <FrequencySpectrum analyser={analyser} isRecording={isRecording} />
       <RecordButton
         isRecording={isRecording}
         setIsRecording={setIsRecording}

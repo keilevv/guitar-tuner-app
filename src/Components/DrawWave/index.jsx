@@ -1,14 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import useFFTAnalyzer from "../../hooks/useFFTAnalyzer";
 
 function DrawWave({ analyser, isRecording }) {
   const canvasRef = useRef(null);
-  const [frequency, setFrequency] = useState(null);
-  const [frequencyHistory, setFrequencyHistory] = useState([]);
-  const historySize = 10; // Número de valores a promediar
-  let animationFrameId = null;
-  let lastTime = performance.now();
-  const updateInterval = 50;
-  const sampleRate = 44100;
+  const { frequency } = useFFTAnalyzer(analyser, isRecording);
 
   useEffect(() => {
     if (!analyser || !canvasRef.current) return;
@@ -16,23 +11,21 @@ function DrawWave({ analyser, isRecording }) {
     const ctx = canvas.getContext("2d");
     const bufferLength = analyser.fftSize;
     const dataArray = new Uint8Array(bufferLength);
-    const fftData = new Uint8Array(bufferLength);
-    let timeElapsed = 0;
+    let animationFrameId;
+    let timeElapsed = 0; // Reset when component mounts
+    const sampleRate = 44100; 
 
-    const draw = (timestamp) => {
-      if (!isRecording) return;
+    const draw = () => {
+      if (!isRecording) {
+        cancelAnimationFrame(animationFrameId); // Stop animation
+        return;
+      }
       animationFrameId = requestAnimationFrame(draw);
 
-      if (timestamp - lastTime < updateInterval) return;
-      lastTime = timestamp;
+      analyser.getByteTimeDomainData(dataArray);
 
-      analyser.getByteTimeDomainData(dataArray); // Onda original
-      analyser.getByteFrequencyData(fftData); // Datos FFT
-
-      // Limpiar canvas sin parpadeo
       ctx.fillStyle = "black";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
       ctx.lineWidth = 2;
       ctx.strokeStyle = "lime";
       ctx.beginPath();
@@ -40,7 +33,6 @@ function DrawWave({ analyser, isRecording }) {
       const sliceWidth = canvas.width / bufferLength;
       let x = 0;
 
-      // Dibujar la onda temporal original
       for (let i = 0; i < bufferLength; i++) {
         const v = dataArray[i] / 128.0;
         const y = (v * canvas.height) / 2;
@@ -52,57 +44,31 @@ function DrawWave({ analyser, isRecording }) {
       }
       ctx.stroke();
 
-      // Calcular frecuencia usando FFT
-      let maxIndex = 0;
-      let maxValue = 0;
-      for (let i = 1; i < fftData.length / 2; i++) {
-        if (fftData[i] > maxValue) {
-          maxValue = fftData[i];
-          maxIndex = i;
-        }
-      }
-
-      const detectedFrequency = (maxIndex * sampleRate) / bufferLength;
-
-      // Agregar al historial y promediar
-      setFrequencyHistory((prev) => {
-        const newHistory = [...prev, detectedFrequency];
-        if (newHistory.length > historySize) newHistory.shift();
-        return newHistory;
-      });
-
-      // Dibujar etiquetas de tiempo
+      // Draw moving time labels
       ctx.fillStyle = "white";
       ctx.font = "14px Arial";
       ctx.textAlign = "center";
+
+      const timeStep = bufferLength / sampleRate; // Time per sample
       for (let i = 0; i <= 5; i++) {
         const xPos = (i / 5) * canvas.width;
-        const timeLabel = ((timeElapsed / 1000) + (i * updateInterval / 1000)).toFixed(2) + "s";
+        const timeLabel = (timeElapsed / 1000 + i * timeStep).toFixed(2) + "s";
         ctx.fillText(timeLabel, xPos, canvas.height - 10);
       }
 
-      timeElapsed += updateInterval;
+      timeElapsed += 1000 * (bufferLength / sampleRate);
     };
 
     if (isRecording) {
-      setFrequencyHistory([]); // Reiniciar historial
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      draw(performance.now());
+      timeElapsed = 0; // Reset time when starting
+      draw();
     }
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      timeElapsed = 0; // Ensure reset when unmounting
     };
   }, [analyser, isRecording]);
-
-  // Calcular frecuencia promedio del historial
-  useEffect(() => {
-    if (frequencyHistory.length > 0) {
-      const avgFrequency =
-        frequencyHistory.reduce((a, b) => a + b, 0) / frequencyHistory.length;
-      setFrequency(avgFrequency.toFixed(2));
-    }
-  }, [frequencyHistory]);
 
   return (
     <div>
