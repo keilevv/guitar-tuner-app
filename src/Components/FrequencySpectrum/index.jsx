@@ -7,7 +7,7 @@ function FrequencySpectrum({ analyser, isRecording }) {
   const { frequencyData } = useFFTAnalyzer(analyser, isRecording);
   const { isMobileScreen } = useViewport();
   const sampleRate = 44100; // Assuming a 44.1kHz sample rate
-  const maxFrequency = 2000; // Max frequency to display
+  const maxFrequency = 500; // Max frequency to display
 
   useEffect(() => {
     if (!canvasRef.current || !frequencyData.length) return;
@@ -15,7 +15,7 @@ function FrequencySpectrum({ analyser, isRecording }) {
     const ctx = canvas.getContext("2d");
     const bufferLength = frequencyData.length;
     const nyquist = sampleRate / 2; // 22050 Hz in 44.1kHz sample rate
-    const maxIndex = Math.round((maxFrequency / nyquist) * bufferLength); // Convert 2000Hz to index
+    const maxIndex = Math.round((maxFrequency / nyquist) * bufferLength); // Convert 500Hz to index
 
     const draw = () => {
       if (!isRecording) return;
@@ -29,7 +29,14 @@ function FrequencySpectrum({ analyser, isRecording }) {
 
       // Draw frequency bars (only up to maxIndex)
       for (let i = 0; i < maxIndex; i++) {
-        const barHeight = frequencyData[i] / 2;
+        const maxBarHeight = canvas.height;
+        const dynamicScale = Math.min(
+          1,
+          100 / Math.max(...frequencyData.slice(0, maxIndex), 1)
+        );
+        const normalizedHeight =
+          (frequencyData[i] / 255) * maxBarHeight * dynamicScale;
+        const barHeight = Math.min(normalizedHeight, maxBarHeight); // Ensure it never exceeds canvas height
         ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth;
@@ -40,7 +47,7 @@ function FrequencySpectrum({ analyser, isRecording }) {
       ctx.font = "12px Consolas";
       ctx.textAlign = "center";
 
-      const labelFrequencies = [100, 500, 1000, 1500, 2000]; // Adjusted labels for the range
+      const labelFrequencies = [100, 200, 300, 400, 500]; // Adjusted labels for the range
       labelFrequencies.forEach((freq) => {
         const index = Math.round((freq / nyquist) * bufferLength);
         const labelX = (index / maxIndex) * canvas.width;
