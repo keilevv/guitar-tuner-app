@@ -72,29 +72,31 @@ function DrawWave({ frequency, analyser, isRecording }) {
 
   return (
     <div>
-      <div className="flex gap-1">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col">
+        <div className="flex gap-2">
           <h2 className="font-semibold">Frecuencia:</h2>
           <h2 className="font-semibold text-lime-400">
             {frequency ? frequency.toFixed(2) + " Hz" : " Calculando..."}
           </h2>
+        </div>
+        <div className="flex gap-2 flex-wrap">
           <h2 className="font-semibold">Arm 1:</h2>
-          <h2 className="font-semibold text-lime-400">
+          <h2 className="font-normal ">
             {frequency ? (frequency * 2).toFixed(2) + " Hz" : " Calculando..."}
           </h2>
           <h2 className="font-semibold">Arm 2:</h2>
-          <h2 className="font-semibold text-lime-400">
+          <h2 className="font-normal ">
             {frequency ? (frequency * 3).toFixed(2) + " Hz" : " Calculando..."}
           </h2>
           <h2 className="font-semibold">Arm 3:</h2>
-          <h2 className="font-semibold text-lime-400">
+          <h2 className="font-normal ">
             {frequency ? (frequency * 4).toFixed(2) + " Hz" : " Calculando..."}
           </h2>
         </div>
       </div>
       <canvas
         ref={canvasRef}
-        className="border-2 border-gray-400 bg-black"
+        className="border-2 border-zinc-400 bg-black rounded-lg "
         width={isMobileScreen ? 350 : 800}
         height={isMobileScreen ? 200 : 300}
       ></canvas>

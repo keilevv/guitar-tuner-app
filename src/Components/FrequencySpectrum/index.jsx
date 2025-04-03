@@ -69,7 +69,7 @@ function FrequencySpectrum({ frequencyData, isRecording }) {
       <h2 className="font-semibold">Espectro de Frecuencias</h2>
       <canvas
         ref={canvasRef}
-        className="border-2 border-gray-400 bg-black"
+        className="border-2 border-zinc-400 bg-black rounded-lg "
         width={isMobileScreen ? 350 : 800}
         height={isMobileScreen ? 200 : 300}
       ></canvas>

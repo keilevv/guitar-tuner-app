@@ -29,17 +29,25 @@ function Tuner({ frequency }) {
 
   const isInTune = Math.abs(centsOff) < 5; // Acceptable threshold in cents
   const indicatorColor = isInTune ? "text-green-500" : "text-red-500";
-  const direction = centsOff > 0 ? "Too High" : "Too Low";
+  const direction = centsOff > 0 ? "Muy Alto" : "Muy bajo";
 
   return (
-    <div className={`flex flex-col items-center p-4 border ${indicatorColor} min-w-[300px]`}>
-      <h2 className="text-xl font-bold">Tuner</h2>
+    <div
+      className={`flex flex-col items-center p-4 border-zinc-400 border-2 rounded-lg shadow-lg  bg-zinc-800 min-w-[300px]`}
+    >
+      <h2 className="text-xl font-bold">Afinador</h2>
       {closestNote ? (
         <div className="text-center">
-          <p className="text-2xl font-semibold">{closestNote.note}</p>
+          <p
+            className={`text-2xl font-semibold ${
+              isInTune ? "text-green-500" : "text-red-500"
+            }`}
+          >
+            {closestNote.note}
+          </p>
           <p className={indicatorColor}>
             {isInTune
-              ? "In Tune"
+              ? "Afinado"
               : `${direction} (${centsOff.toFixed(2)} cents)`}
           </p>
         </div>
