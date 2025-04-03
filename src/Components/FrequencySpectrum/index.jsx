@@ -29,14 +29,10 @@ function FrequencySpectrum({ analyser, isRecording }) {
 
       // Draw frequency bars (only up to maxIndex)
       for (let i = 0; i < maxIndex; i++) {
-        const maxBarHeight = canvas.height;
-        const dynamicScale = Math.min(
-          1,
-          100 / Math.max(...frequencyData.slice(0, maxIndex), 1)
-        );
-        const normalizedHeight =
-          (frequencyData[i] / 255) * maxBarHeight * dynamicScale;
-        const barHeight = Math.min(normalizedHeight, maxBarHeight); // Ensure it never exceeds canvas height
+const maxBarHeight = canvas.height;
+const maxDataValue = Math.max(...frequencyData.slice(0, maxIndex)); // Find highest value in range
+const normalizedHeight = maxDataValue > 0 ? (frequencyData[i] / maxDataValue) * maxBarHeight : 0;
+const barHeight = Math.min(normalizedHeight, maxBarHeight); // Ensure it never exceeds canvas height
         ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
         ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
         x += barWidth;
