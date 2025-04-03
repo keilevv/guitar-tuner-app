@@ -7,12 +7,12 @@ function useFFTAnalyzer(analyser, isRecording) {
   const sampleRate = 44100;
   const historySize = 10;
   const frequencyHistoryRef = useRef([]);
-  const smoothingFactor = 0.1; // For low-pass filter
+  const smoothingFactor = 0.1; // Low-pass filter
 
   useEffect(() => {
     if (!analyser || !isRecording) return;
 
-    analyser.fftSize = 2048; // Increased FFT size for better resolution
+    analyser.fftSize = 2048; // Higher FFT resolution
     const bufferLength = analyser.fftSize;
     const dataArray = new Uint8Array(bufferLength);
     const fftData = new Uint8Array(bufferLength);
@@ -21,10 +21,10 @@ function useFFTAnalyzer(analyser, isRecording) {
       if (!isRecording) return;
       animationFrameId.current = requestAnimationFrame(analyze);
 
-      analyser.getByteFrequencyData(fftData); // Frequency domain data
+      analyser.getByteFrequencyData(fftData); // Get frequency domain data
       setFrequencyData(fftData);
 
-      // Find dominant frequency using parabolic interpolation
+      // Find peak frequency index
       let maxIndex = 0;
       let maxValue = 0;
       for (let i = 1; i < fftData.length / 2; i++) {
@@ -34,46 +34,64 @@ function useFFTAnalyzer(analyser, isRecording) {
         }
       }
 
-      // Parabolic interpolation to refine peak frequency
+      // Avoid index out of bounds
+      if (maxIndex <= 0 || maxIndex >= fftData.length - 1) {
+        return; // Skip this frame to prevent NaN
+      }
+
+      // Parabolic interpolation for better frequency precision
       const alpha = fftData[maxIndex - 1] || 0;
       const beta = fftData[maxIndex];
       const gamma = fftData[maxIndex + 1] || 0;
-      const peakOffset = (alpha - gamma) / (2 * (alpha - 2 * beta + gamma));
+      const denominator = 2 * (alpha - 2 * beta + gamma);
+
+      let peakOffset = 0;
+      if (denominator !== 0) {
+        peakOffset = (alpha - gamma) / denominator;
+      }
+
       const detectedFrequency =
         ((maxIndex + peakOffset) * sampleRate) / bufferLength;
 
-      // Ignore large frequency jumps (outlier detection)
+      // Prevent NaN frequencies
+      if (!isFinite(detectedFrequency) || detectedFrequency <= 0) {
+        return;
+      }
+
+      // Ignore sudden frequency jumps
       if (
         frequencyHistoryRef.current.length > 0 &&
         Math.abs(detectedFrequency - frequencyHistoryRef.current.at(-1)) > 50
       ) {
-        return; // Ignore sudden jumps
+        return; // Ignore outliers
       }
 
-      // Update frequency history
+      // Store detected frequency
       frequencyHistoryRef.current.push(detectedFrequency);
       if (frequencyHistoryRef.current.length > historySize) {
         frequencyHistoryRef.current.shift();
       }
 
-      // Apply Weighted Moving Average
-      const weights = frequencyHistoryRef.current.map((_, i) => i + 1);
-      const weightedSum = frequencyHistoryRef.current.reduce(
-        (sum, f, i) => sum + f * weights[i],
-        0
-      );
-      const weightTotal = weights.reduce((sum, w) => sum + w, 0);
-      const avgFrequency = weightedSum / weightTotal;
+      // Weighted Moving Average
+      if (frequencyHistoryRef.current.length > 0) {
+        const weights = frequencyHistoryRef.current.map((_, i) => i + 1);
+        const weightedSum = frequencyHistoryRef.current.reduce(
+          (sum, f, i) => sum + f * weights[i],
+          0
+        );
+        const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+        const avgFrequency = weightedSum / weightTotal;
 
-      // Apply Low-Pass Filtering
-      setFrequency((prev) =>
-        prev
-          ? prev * (1 - smoothingFactor) + avgFrequency * smoothingFactor
-          : avgFrequency
-      );
+        // Apply Low-Pass Filtering
+        setFrequency((prev) =>
+          prev
+            ? prev * (1 - smoothingFactor) + avgFrequency * smoothingFactor
+            : avgFrequency
+        );
+      }
     };
 
-    // Reset history when recording starts
+    // Reset history on new recording
     frequencyHistoryRef.current = [];
     analyze();
 
