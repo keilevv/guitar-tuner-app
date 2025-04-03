@@ -12,86 +12,73 @@ function useFFTAnalyzer(analyser, isRecording) {
   useEffect(() => {
     if (!analyser || !isRecording) return;
 
-    analyser.fftSize = 2048; // Higher FFT resolution
-    const bufferLength = analyser.fftSize;
-    const dataArray = new Uint8Array(bufferLength);
+    analyser.fftSize = 8192; // Higher FFT resolution for better accuracy
+    const bufferLength = analyser.frequencyBinCount; // Half of fftSize
     const fftData = new Uint8Array(bufferLength);
 
     const analyze = () => {
       if (!isRecording) return;
       animationFrameId.current = requestAnimationFrame(analyze);
 
-      analyser.getByteFrequencyData(fftData); // Get frequency domain data
+      analyser.getByteFrequencyData(fftData);
       setFrequencyData(fftData);
 
-      // Find peak frequency index
       let maxIndex = 0;
       let maxValue = 0;
-      for (let i = 1; i < fftData.length / 2; i++) {
+
+      // Find dominant frequency
+      for (let i = 1; i < bufferLength / 4; i++) {
         if (fftData[i] > maxValue) {
           maxValue = fftData[i];
           maxIndex = i;
         }
       }
 
-      // Avoid index out of bounds
-      if (maxIndex <= 0 || maxIndex >= fftData.length - 1) {
-        return; // Skip this frame to prevent NaN
-      }
+      if (maxIndex <= 0 || maxIndex >= bufferLength - 1) return;
 
-      // Parabolic interpolation for better frequency precision
-      const alpha = fftData[maxIndex - 1] || 0;
-      const beta = fftData[maxIndex];
-      const gamma = fftData[maxIndex + 1] || 0;
-      const denominator = 2 * (alpha - 2 * beta + gamma);
+      let detectedFreq = (maxIndex * sampleRate) / analyser.fftSize;
 
-      let peakOffset = 0;
-      if (denominator !== 0) {
-        peakOffset = (alpha - gamma) / denominator;
-      }
-
-      const detectedFrequency =
-        ((maxIndex + peakOffset) * sampleRate) / bufferLength;
-
-      // Prevent NaN frequencies
-      if (!isFinite(detectedFrequency) || detectedFrequency <= 0) {
-        return;
+      // Harmonic Energy Analysis (Check if we are detecting an octave harmonic)
+      let fundamentalFreq = detectedFreq;
+      for (let div = 2; div <= 4; div++) {
+        let harmonicIndex = Math.round(maxIndex / div);
+        if (harmonicIndex > 0 && fftData[harmonicIndex] > fftData[maxIndex] * 0.6) {
+          fundamentalFreq = detectedFreq / div;
+          break; // Take the strongest subharmonic
+        }
       }
 
       // Ignore sudden frequency jumps
       if (
         frequencyHistoryRef.current.length > 0 &&
-        Math.abs(detectedFrequency - frequencyHistoryRef.current.at(-1)) > 50
+        Math.abs(fundamentalFreq - frequencyHistoryRef.current.at(-1)) > 30
       ) {
-        return; // Ignore outliers
+        return;
       }
 
       // Store detected frequency
-      frequencyHistoryRef.current.push(detectedFrequency);
+      frequencyHistoryRef.current.push(fundamentalFreq);
       if (frequencyHistoryRef.current.length > historySize) {
         frequencyHistoryRef.current.shift();
       }
 
       // Weighted Moving Average
-      if (frequencyHistoryRef.current.length > 0) {
-        const weights = frequencyHistoryRef.current.map((_, i) => i + 1);
-        const weightedSum = frequencyHistoryRef.current.reduce(
-          (sum, f, i) => sum + f * weights[i],
-          0
-        );
-        const weightTotal = weights.reduce((sum, w) => sum + w, 0);
-        const avgFrequency = weightedSum / weightTotal;
+      const weights = frequencyHistoryRef.current.map((_, i) => i + 1);
+      const weightedSum = frequencyHistoryRef.current.reduce(
+        (sum, f, i) => sum + f * weights[i],
+        0
+      );
+      const weightTotal = weights.reduce((sum, w) => sum + w, 0);
+      const avgFrequency = weightedSum / weightTotal;
 
-        // Apply Low-Pass Filtering
-        setFrequency((prev) =>
-          prev
-            ? prev * (1 - smoothingFactor) + avgFrequency * smoothingFactor
-            : avgFrequency
-        );
-      }
+      // Apply Low-Pass Filtering
+      setFrequency((prev) =>
+        prev
+          ? prev * (1 - smoothingFactor) + avgFrequency * smoothingFactor
+          : avgFrequency
+      );
     };
 
-    // Reset history on new recording
     frequencyHistoryRef.current = [];
     analyze();
 

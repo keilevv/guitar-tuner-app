@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { noteFrequencies } from "../../noteFrequencies";
 
 // Function to calculate cents difference
@@ -18,41 +18,65 @@ function getClosestNote(frequency) {
 function Tuner({ frequency }) {
   const [closestNote, setClosestNote] = useState(null);
   const [centsOff, setCentsOff] = useState(0);
+  const [smoothedFrequency, setSmoothedFrequency] = useState(frequency);
+  const previousFrequencies = useRef([]);
 
   useEffect(() => {
     if (frequency) {
-      const note = getClosestNote(frequency);
+      // Moving Average Smoothing (use last 5 values)
+      previousFrequencies.current.push(frequency);
+      if (previousFrequencies.current.length > 5) {
+        previousFrequencies.current.shift(); // Keep array size small
+      }
+      const avgFrequency =
+        previousFrequencies.current.reduce((sum, f) => sum + f, 0) /
+        previousFrequencies.current.length;
+
+      setSmoothedFrequency(avgFrequency);
+
+      // Find closest note
+      const note = getClosestNote(avgFrequency);
       setClosestNote(note);
-      setCentsOff(getCentsDifference(frequency, note.freq));
+
+      // Calculate cents
+      setCentsOff(getCentsDifference(avgFrequency, note.freq));
     }
   }, [frequency]);
 
-  const isInTune = Math.abs(centsOff) < 5; // Acceptable threshold in cents
-  const indicatorColor = isInTune ? "text-green-500" : "text-red-500";
-  const direction = centsOff > 0 ? "Muy Alto" : "Muy bajo";
+  // Improved natural feel: Define in-tune zones
+  const absCents = Math.abs(centsOff);
+  let tuningStatus, indicatorColor;
+
+  if (absCents < 5) {
+    tuningStatus = "Afinado 🎯";
+    indicatorColor = "text-green-500";
+  } else if (absCents < 15) {
+    tuningStatus = "Casi afinado 🔸";
+    indicatorColor = "text-yellow-500";
+  } else if (absCents < 30) {
+    tuningStatus = centsOff > 0 ? "Un poco alto 🔺" : "Un poco bajo 🔻";
+    indicatorColor = "text-orange-500";
+  } else {
+    tuningStatus = centsOff > 0 ? "Muy alto 🔴" : "Muy bajo 🔴";
+    indicatorColor = "text-red-500";
+  }
 
   return (
     <div
-      className={`flex flex-col items-center p-4 border-zinc-400 border-2 rounded-lg shadow-lg  bg-zinc-800 min-w-[300px]`}
+      className="flex flex-col items-center p-4 border-zinc-400 border-2 rounded-lg shadow-lg bg-zinc-800 min-w-[300px]"
     >
       <h2 className="text-xl font-bold">Afinador</h2>
       {closestNote ? (
         <div className="text-center">
-          <p
-            className={`text-2xl font-semibold ${
-              isInTune ? "text-green-500" : "text-red-500"
-            }`}
-          >
+          <p className={`text-2xl font-semibold ${indicatorColor}`}>
             {closestNote.note}
           </p>
           <p className={indicatorColor}>
-            {isInTune
-              ? "Afinado"
-              : `${direction} (${centsOff.toFixed(2)} cents)`}
+            {tuningStatus} ({centsOff.toFixed(2)} cents)
           </p>
         </div>
       ) : (
-        <p>Waiting for frequency...</p>
+        <p>Esperando frecuencia...</p>
       )}
     </div>
   );
