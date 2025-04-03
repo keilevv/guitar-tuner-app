@@ -1,11 +1,9 @@
 import { useEffect, useRef } from "react";
-import useFFTAnalyzer from "../../hooks/useFFTAnalyzer";
-import useViewport from "../../hooks/useViewport";
+import useViewport from "../../hooks/useViewport.js";
 
-function DrawWave({ analyser, isRecording }) {
+function DrawWave({ frequency, analyser, isRecording }) {
   const canvasRef = useRef(null);
   const { isMobileScreen } = useViewport();
-  const { frequency } = useFFTAnalyzer(analyser, isRecording);
 
   useEffect(() => {
     if (!analyser || !canvasRef.current) return;
@@ -77,7 +75,7 @@ function DrawWave({ analyser, isRecording }) {
       <div className="flex gap-1">
         <h2 className="font-semibold">Frecuencia:</h2>
         <h2 className="font-semibold text-lime-400">
-          {frequency ? Number(frequency.toFixed(2)) + " Hz" : " Calculando..."}
+          {frequency ? frequency + " Hz" : " Calculando..."}
         </h2>
       </div>
       <canvas
