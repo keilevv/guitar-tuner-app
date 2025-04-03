@@ -12,14 +12,19 @@ function DrawWave({ frequency, analyser, isRecording }) {
     const bufferLength = analyser.fftSize;
     const dataArray = new Uint8Array(bufferLength);
     let animationFrameId;
-    let timeElapsed = 0; // Reset when component mounts
+    let startTime = null; // Store recording start time
     const sampleRate = 44100;
 
-    const draw = () => {
+    const draw = (timestamp) => {
       if (!isRecording) {
-        cancelAnimationFrame(animationFrameId); // Stop animation
+        cancelAnimationFrame(animationFrameId);
         return;
       }
+
+      if (!startTime) {
+        startTime = timestamp; // Set start time when recording begins
+      }
+
       animationFrameId = requestAnimationFrame(draw);
 
       analyser.getByteTimeDomainData(dataArray);
@@ -44,29 +49,34 @@ function DrawWave({ frequency, analyser, isRecording }) {
       }
       ctx.stroke();
 
-      // Draw moving time labels
+      // Compute actual elapsed time
+      const timeElapsed = (timestamp - startTime) / 1000; // Convert to seconds
+
+      // Draw time labels with correct timing
       ctx.fillStyle = "white";
       ctx.font = "14px Consolas";
       ctx.textAlign = "center";
 
-      const timeStep = bufferLength / sampleRate; // Time per sample
+      const durationDisplayed = 3; // Seconds shown on the canvas
       for (let i = 0; i <= 5; i++) {
         const xPos = (i / 5) * canvas.width;
-        const timeLabel = (timeElapsed / 1000 + i * timeStep).toFixed(2) + "s";
+        const timeLabel =
+          Math.max(
+            0,
+            timeElapsed - durationDisplayed + (i * durationDisplayed) / 5
+          ).toFixed(2) + "s";
+
         ctx.fillText(timeLabel, xPos, canvas.height - 10);
       }
-
-      timeElapsed += 1000 * (bufferLength / sampleRate);
     };
 
     if (isRecording) {
-      timeElapsed = 0; // Reset time when starting
-      draw();
+      startTime = null; // Reset start time when recording starts
+      requestAnimationFrame(draw);
     }
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      timeElapsed = 0; // Ensure reset when unmounting
     };
   }, [analyser, isRecording]);
 
