@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+
 function useFFTAnalyzer(analyser, isRecording, correctHarmonics = true) {
   const [frequency, setFrequency] = useState(null);
   const [finalFrequency, setFinalFrequency] = useState(null);
@@ -40,22 +41,32 @@ function useFFTAnalyzer(analyser, isRecording, correctHarmonics = true) {
       }
       frameCountRef.current++;
 
-      // Detect peak frequency
-      let maxIndex = 0;
-      let maxValue = 0;
-      for (let i = 1; i < bufferLength / 2; i++) {
+      // Find peak bin
+      let maxIndex = 1;
+      let maxValue = fftData[1];
+      for (let i = 2; i < bufferLength / 2; i++) {
         if (fftData[i] > maxValue) {
           maxValue = fftData[i];
           maxIndex = i;
         }
       }
 
-      const rawFreq = (maxIndex * sampleRate) / fftSize;
+      // Quadratic interpolation for sub-bin accuracy
+      const y0 = fftData[maxIndex - 1] || 0;
+      const y1 = fftData[maxIndex];
+      const y2 = fftData[maxIndex + 1] || 0;
+
+      const denominator = y0 - 2 * y1 + y2;
+      const offset = denominator !== 0 ? (0.5 * (y0 - y2)) / denominator : 0;
+
+      const interpolatedIndex = maxIndex + offset;
+      const rawFreq = (interpolatedIndex * sampleRate) / fftSize;
+
       let correctedFreq = rawFreq;
 
       if (correctHarmonics) {
         for (let div = 2; div <= 5; div++) {
-          const idx = Math.round(maxIndex / div);
+          const idx = Math.round(interpolatedIndex / div);
           if (idx > 0 && fftData[idx] > fftData[maxIndex] * 0.6) {
             correctedFreq = rawFreq / div;
             break;
@@ -111,4 +122,5 @@ function useFFTAnalyzer(analyser, isRecording, correctHarmonics = true) {
 
   return { frequency, finalFrequency, finalSpectrum };
 }
+
 export default useFFTAnalyzer;

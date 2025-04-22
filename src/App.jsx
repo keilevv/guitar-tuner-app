@@ -19,7 +19,7 @@ function App() {
     if (!audioContext) {
       const context = new (window.AudioContext || window.webkitAudioContext)();
       const analyserNode = context.createAnalyser();
-      analyserNode.fftSize = 1024;
+      analyserNode.fftSize = 16384;
       setAudioContext(context);
       setAnalyser(analyserNode);
     }
