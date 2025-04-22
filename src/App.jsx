@@ -42,7 +42,7 @@ function App() {
         analyser={analyser}
       />
 
-      <Tuner frequency={frequency} isRecording={isRecording} />
+      {/* <Tuner frequency={frequency} isRecording={isRecording} /> */}
 
       <FrequencySpectrum
         frequencyData={finalSpectrum}

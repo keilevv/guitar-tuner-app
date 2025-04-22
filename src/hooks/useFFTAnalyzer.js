@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-
-function useFFTAnalyzer(analyser, isRecording) {
-  const [frequency, setFrequency] = useState(null); // Real-time (smoothed)
+function useFFTAnalyzer(analyser, isRecording, correctHarmonics = true) {
+  const [frequency, setFrequency] = useState(null);
   const [finalFrequency, setFinalFrequency] = useState(null);
   const [finalSpectrum, setFinalSpectrum] = useState(new Uint8Array(0));
 
@@ -33,7 +32,6 @@ function useFFTAnalyzer(analyser, isRecording) {
       if (!isRecording) return;
 
       animationFrameId.current = requestAnimationFrame(analyze);
-
       analyser.getByteFrequencyData(fftData);
 
       // Accumulate spectrum
@@ -42,7 +40,7 @@ function useFFTAnalyzer(analyser, isRecording) {
       }
       frameCountRef.current++;
 
-      // Detect dominant frequency
+      // Detect peak frequency
       let maxIndex = 0;
       let maxValue = 0;
       for (let i = 1; i < bufferLength / 2; i++) {
@@ -52,21 +50,21 @@ function useFFTAnalyzer(analyser, isRecording) {
         }
       }
 
-      let rawFreq = (maxIndex * sampleRate) / fftSize;
+      const rawFreq = (maxIndex * sampleRate) / fftSize;
       let correctedFreq = rawFreq;
 
-      // Subharmonic correction
-      for (let div = 2; div <= 5; div++) {
-        const idx = Math.round(maxIndex / div);
-        if (idx > 0 && fftData[idx] > fftData[maxIndex] * 0.6) {
-          correctedFreq = rawFreq / div;
-          break;
+      if (correctHarmonics) {
+        for (let div = 2; div <= 5; div++) {
+          const idx = Math.round(maxIndex / div);
+          if (idx > 0 && fftData[idx] > fftData[maxIndex] * 0.6) {
+            correctedFreq = rawFreq / div;
+            break;
+          }
         }
       }
 
       frequencyHistoryRef.current.push(correctedFreq);
 
-      // Smooth real-time frequency
       setFrequency((prev) =>
         prev
           ? prev * (1 - smoothingFactor) + correctedFreq * smoothingFactor
@@ -78,7 +76,6 @@ function useFFTAnalyzer(analyser, isRecording) {
       resetState();
       animationFrameId.current = requestAnimationFrame(analyze);
     } else {
-      // Stop analyzing
       cancelAnimationFrame(animationFrameId.current);
 
       const freqs = frequencyHistoryRef.current;
@@ -86,14 +83,12 @@ function useFFTAnalyzer(analyser, isRecording) {
       const frameCount = frameCountRef.current;
 
       if (freqs.length > 0 && frameCount > 0) {
-        // Average spectrum
         const avgSpectrum = new Uint8Array(summed.length);
         for (let i = 0; i < summed.length; i++) {
           avgSpectrum[i] = Math.min(255, summed[i] / frameCount);
         }
         setFinalSpectrum(avgSpectrum);
 
-        // Get most frequent (mode) frequency
         const freqBins = {};
         freqs.forEach((f) => {
           const rounded = Math.round(f);
@@ -106,16 +101,14 @@ function useFFTAnalyzer(analyser, isRecording) {
 
         setFinalFrequency(parseFloat(mostFrequent));
       } else {
-        // In case no data was collected
         setFinalFrequency(null);
         setFinalSpectrum(new Uint8Array(0));
       }
     }
 
     return () => cancelAnimationFrame(animationFrameId.current);
-  }, [analyser, isRecording]);
+  }, [analyser, isRecording, correctHarmonics]);
 
   return { frequency, finalFrequency, finalSpectrum };
 }
-
 export default useFFTAnalyzer;
