@@ -72,7 +72,7 @@ function Tuner({ frequency }) {
             {closestNote.note}
           </p>
           <p className={indicatorColor}>
-            {tuningStatus} ({centsOff.toFixed(2)} cents)
+            {tuningStatus} ({frequency.toFixed(2)} cents)
           </p>
         </div>
       ) : (

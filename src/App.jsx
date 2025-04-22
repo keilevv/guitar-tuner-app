@@ -10,7 +10,10 @@ function App() {
   const [audioContext, setAudioContext] = useState(null);
   const [analyser, setAnalyser] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const { frequency, frequencyData } = useFFTAnalyzer(analyser, isRecording);
+  const { finalSpectrum, finalFrequency, frequency } = useFFTAnalyzer(
+    analyser,
+    isRecording
+  );
 
   useEffect(() => {
     if (!audioContext) {
@@ -28,20 +31,23 @@ function App() {
         Analizador de Frecuencias
       </h1>
       <DrawWave
-        frequency={frequency}
+        frequency={finalFrequency}
         analyser={analyser}
         isRecording={isRecording}
       />
-      <Tuner frequency={frequency} isRecording={isRecording} />
       <RecordButton
         isRecording={isRecording}
         setIsRecording={setIsRecording}
         audioContext={audioContext}
         analyser={analyser}
       />
+
+      <Tuner frequency={frequency} isRecording={isRecording} />
+
       <FrequencySpectrum
-        frequencyData={frequencyData}
+        frequencyData={finalSpectrum}
         isRecording={isRecording}
+        frequency={finalFrequency}
       />
       <Footer />
     </div>
